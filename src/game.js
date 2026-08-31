@@ -162,11 +162,11 @@ function shadeFor(surface, depth) {
   return "hsl(" + base.h + ", " + base.s + "%, " + lightness.toFixed(1) + "%)";
 }
 
-// Real wall art (Dad's sheet, sliced by tools/slice_tileset.py). Walls
-// (left/right/forward) use this; floor/ceiling don't have real art yet
-// so they keep using shadeFor() above.
+// Real wall art (Dad's sheet, sliced by tools/slice_tileset.py). The
+// forward-facing dead-end cap uses this directly -- it's viewed
+// straight-on, so a plain repeating texture is already correct for it.
 const WALL_TEXTURE_URL = "../assets/tiles/wall_plain_01.png";
-const WALL_SURFACES = new Set(["left", "right", "forward"]);
+const WALL_SURFACES = new Set(["forward"]);
 
 // The texture tile is drawn smaller at greater depth -- that's what
 // makes the brickwork look like it's shrinking into the distance,
@@ -180,6 +180,18 @@ function wallTextureSizeFor(depth) {
   const size = WALL_TEXTURE_BASE_SIZE * Math.pow(WALL_TEXTURE_SHRINK, depth);
   const px = Math.max(size, 24) + "px";
   return px + " " + px;
+}
+
+// Left/right walls use pre-warped images instead (tools/generate_wall_side_assets.py)
+// -- unlike the forward cap, a side wall is viewed at an angle, receding
+// away from the player, so a plain repeating texture would never show
+// the brick pattern actually converging toward the far end. These
+// images have that convergence baked into their pixels already, one
+// per depth band (0..3), with the right wall just using the same
+// image mirrored horizontally -- see docs/06-corridor-view-assets.md.
+function wallSideImageUrl(depth, side) {
+  const suffix = side === "right" ? "_mirrored" : "";
+  return "../assets/tiles/wall_side_depth" + depth + suffix + ".png";
 }
 
 // A see-through black layer drawn on top of the texture, darker at
@@ -238,6 +250,50 @@ function makeSurfacePiece(surfaceType, depth, points, parent) {
   return piece;
 }
 
+// Creates one side-wall piece (left or right) using its pre-warped
+// image. Unlike makeSurfacePiece, this needs to know the piece's own
+// bounding box (not just the viewport): the image was generated at
+// exactly that size, so a child element sized/positioned to that same
+// box (in simple container-relative percentages) is what lines the
+// image up pixel-for-pixel with the clip-path trapezoid cut from the
+// outer piece. (We use a child element rather than CSS background-
+// position percentages on the outer piece directly, because
+// background-position percentages don't mean "percent of the
+// container" the way element left/top/width/height do -- they're
+// relative to the leftover space after the image is placed, which
+// isn't what we want here.)
+function makeSideWallPiece(side, depth, near, far, points, parent) {
+  const piece = document.createElement("div");
+  piece.className = "corridor-surface";
+  piece.style.clipPath = clipPathFromPoints(points);
+  piece.style.backgroundColor = shadeFor(side, depth); // fallback if the image fails to load
+
+  const bboxLeft = side === "left" ? near.left : far.right;
+  const bboxWidth = far.left - near.left; // same magnitude on both sides
+  const bboxHeight = near.bottom - near.top;
+
+  const image = document.createElement("div");
+  image.style.position = "absolute";
+  image.style.left = toPercent(bboxLeft, VIEWPORT_WIDTH);
+  image.style.top = toPercent(near.top, VIEWPORT_HEIGHT);
+  image.style.width = toPercent(bboxWidth, VIEWPORT_WIDTH);
+  image.style.height = toPercent(bboxHeight, VIEWPORT_HEIGHT);
+  image.style.backgroundImage =
+    "linear-gradient(" +
+    fogOverlayFor(depth) +
+    ", " +
+    fogOverlayFor(depth) +
+    "), url('" +
+    wallSideImageUrl(depth, side) +
+    "')";
+  image.style.backgroundSize = "100% 100%";
+  image.style.backgroundRepeat = "no-repeat";
+  piece.appendChild(image);
+
+  parent.appendChild(piece);
+  return piece;
+}
+
 // Builds and displays the corridor view for the player's current
 // position + facing. Called every time the player moves or turns.
 function renderCorridor() {
@@ -287,9 +343,11 @@ function renderCorridor() {
     // If it's open floor, we leave that side see-through for now --
     // rendering side-passages is a later problem, not MVP1's job.
     if (isWall(cellX + leftDir.dx, cellY + leftDir.dy)) {
-      makeSurfacePiece(
+      makeSideWallPiece(
         "left",
         depth,
+        near,
+        far,
         [
           [near.left, near.top],
           [far.left, far.top],
@@ -300,9 +358,11 @@ function renderCorridor() {
       );
     }
     if (isWall(cellX + rightDir.dx, cellY + rightDir.dy)) {
-      makeSurfacePiece(
+      makeSideWallPiece(
         "right",
         depth,
+        near,
+        far,
         [
           [near.right, near.top],
           [far.right, far.top],
