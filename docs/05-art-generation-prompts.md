@@ -5,6 +5,8 @@
 > **How to use this doc:** copy a prompt below into whatever image-gen tool you're using, generate a few options, and pick the best one (or iterate on the prompt). Save the result into `/assets/` using the filename given. This doc grows over time — one section gets added per MVP, right before that MVP needs new art, following the placeholder-first rule in `01-requirements.md` Section 7a.
 >
 > **Dad:** worth a quick sanity check on the style/resolution choices below before generating for real — these are reasonable defaults, not locked decisions.
+>
+> **How these get used in code (no effect on the prompts below):** the corridor renderer draws each wall/floor/ceiling piece as a tapered shape (CSS `clip-path`), cut out of the flat square texture — the texture itself stays a plain seamless tile, the code does the tapering. One thing still to build when real textures go in: the same texture should look smaller/more compressed on farther pieces (real perspective shrinks bricks with distance), which will be a `background-size` change per depth band in `game.js`, not a different image asset.
 
 ---
 
