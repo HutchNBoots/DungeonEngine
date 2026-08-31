@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>The Last Torchlight</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ===== START SCREEN ===== -->
+  <!-- This is what you see before the game begins. Clicking the button -->
+  <!-- hides this screen and shows the game screen below. -->
+  <div id="start-screen">
+    <h1>The Last Torchlight</h1>
+    <p>Chapter 1</p>
+    <button id="start-button">Begin</button>
+  </div>
+
+  <!-- ===== GAME SCREEN ===== -->
+  <!-- Hidden until "Begin" is clicked. Holds the corridor view and controls. -->
+  <div id="game-screen" class="hidden">
+
+    <!-- The corridor gets built here by JavaScript every time the player moves. -->
+    <div id="viewport"></div>
+
+    <!-- Small debug line so we can see facing/position while testing. -->
+    <!-- Not part of the final game UI -- just a teaching/testing aid for now. -->
+    <div id="debug-line"></div>
+
+    <!-- On-screen movement controls, DM-style: turn left/right, walk forward/back. -->
+    <div id="controls">
+      <button id="btn-turn-left">&#8630;</button>
+      <button id="btn-forward">&#8593;</button>
+      <button id="btn-turn-right">&#8631;</button>
+      <button id="btn-backward">&#8595;</button>
+    </div>
+
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
