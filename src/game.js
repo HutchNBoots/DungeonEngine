@@ -96,21 +96,38 @@ function move(stepDirection) {
 // -------------------------------------------------------------------
 // 3. RENDERING THE CORRIDOR VIEW
 // -------------------------------------------------------------------
-// The trick: we don't draw one 3D scene. We draw a stack of flat
-// "picture frames," one per step of depth ahead of the player, each
-// one smaller than the last. Nested inside each other, they fake the
-// look of a hallway stretching away from you -- this is how the
-// original Dungeon Master-style engines did it.
+// Real perspective: imagine a rectangle marking "the edge of what you
+// can see" at each step of depth down the hallway. Right at the
+// player, that rectangle is the whole screen. One step further, it's
+// a smaller rectangle centered in the middle of the screen (since
+// looking further down a hallway shows you a narrower slice of it).
+// Two steps further, smaller still. And so on.
 //
-// Sizes below are placeholders for now (see style.css note at the top
-// of that file) -- the numbers just control how big each depth frame
-// is on screen, not what it looks like.
-const DEPTH_CONFIG = [
-  { width: 640, height: 480, wallW: 160, capH: 140 }, // depth 0: right in front of you
-  { width: 440, height: 340, wallW: 110, capH: 100 }, // depth 1
-  { width: 300, height: 230, wallW: 75, capH: 68 },   // depth 2
-  { width: 190, height: 145, wallW: 48, capH: 44 },   // depth 3: farthest we'll draw
+// RECT_SIZES lists those rectangles, nearest to farthest. The actual
+// wall/floor/ceiling shapes are then the four-sided regions *between*
+// one rectangle and the next -- each one a trapezoid that's wide at
+// the near edge and narrow at the far edge, which is what makes the
+// hallway look like it recedes into the distance instead of looking
+// like stacked boxes.
+const RECT_SIZES = [
+  { width: 640, height: 480 }, // right where the player is standing
+  { width: 460, height: 350 },
+  { width: 320, height: 250 },
+  { width: 210, height: 170 },
+  { width: 130, height: 108 }, // farthest we'll ever draw
 ];
+
+const VIEWPORT_WIDTH = 640;
+const VIEWPORT_HEIGHT = 480;
+
+// Turns a RECT_SIZES entry into the actual pixel edges of that
+// rectangle, centered in the viewport.
+function getRect(index) {
+  const { width, height } = RECT_SIZES[index];
+  const left = (VIEWPORT_WIDTH - width) / 2;
+  const top = (VIEWPORT_HEIGHT - height) / 2;
+  return { left, top, right: VIEWPORT_WIDTH - left, bottom: VIEWPORT_HEIGHT - top };
+}
 
 // Turns the abstract facing number into "which direction is to my left"
 // and "which direction is to my right" -- needed to know whether to
@@ -122,15 +139,52 @@ function rightOfFacing(facing) {
   return (facing + 1) % 4;
 }
 
-// Makes one positioned div and appends it to a parent. `styles` is a
-// plain object of CSS properties, so callers can just describe the
-// box they want (position, size, color) without repeating boilerplate.
-function makeBox(className, styles, parent) {
-  const box = document.createElement("div");
-  box.className = className;
-  Object.assign(box.style, styles);
-  parent.appendChild(box);
-  return box;
+// Base color for each surface type, as HSL. Depth shading (below)
+// darkens these the further away a piece is, which is what sells the
+// "fading into the dark" look -- without it, every depth would be the
+// same flat brightness and look like stacked cardboard again.
+const SURFACE_COLORS = {
+  ceiling: { h: 245, s: 35, l: 14 },
+  floor: { h: 30, s: 35, l: 20 },
+  left: { h: 220, s: 6, l: 36 },
+  right: { h: 220, s: 6, l: 30 },
+  forward: { h: 250, s: 12, l: 13 },
+};
+
+function shadeFor(surface, depth) {
+  const base = SURFACE_COLORS[surface];
+  const falloff = Math.pow(0.82, depth); // each step back gets a bit darker
+  const lightness = Math.max(base.l * falloff, 3);
+  return "hsl(" + base.h + ", " + base.s + "%, " + lightness.toFixed(1) + "%)";
+}
+
+// CSS clip-path needs percentages (so the shape still lines up if the
+// viewport gets scaled by CSS), not raw pixels -- this converts.
+function toPercent(value, total) {
+  return ((value / total) * 100).toFixed(2) + "%";
+}
+
+// Builds one clip-path polygon string from a list of [x, y] pixel
+// points describing the corners of a shape, in order around its edge.
+function clipPathFromPoints(points) {
+  const parts = points.map(
+    ([x, y]) => toPercent(x, VIEWPORT_WIDTH) + " " + toPercent(y, VIEWPORT_HEIGHT)
+  );
+  return "polygon(" + parts.join(", ") + ")";
+}
+
+// Creates one wall/floor/ceiling piece: a div covering the whole
+// viewport, then clipped down to just the trapezoid shape we want.
+// Because every piece is clipped to its own non-overlapping shape,
+// pieces never need to be stacked/ordered on top of each other --
+// unlike the old stacked-rectangle version, there's no z-index math.
+function makeSurfacePiece(surfaceType, depth, points, parent) {
+  const piece = document.createElement("div");
+  piece.className = "corridor-surface";
+  piece.style.clipPath = clipPathFromPoints(points);
+  piece.style.backgroundColor = shadeFor(surfaceType, depth);
+  parent.appendChild(piece);
+  return piece;
 }
 
 // Builds and displays the corridor view for the player's current
@@ -143,70 +197,91 @@ function renderCorridor() {
   const leftDir = DIRECTIONS[leftOfFacing(player.facing)];
   const rightDir = DIRECTIONS[rightOfFacing(player.facing)];
 
-  // We build each depth layer's div and remember it in this array so
-  // that, once we know how many depths we actually got to see, we can
-  // add them to the page in the right order (farthest first). Adding
-  // farthest-first means each nearer layer naturally overlaps/covers
-  // the one behind it -- no z-index juggling needed.
-  const layers = [];
-
-  for (let depth = 0; depth < DEPTH_CONFIG.length; depth++) {
-    const config = DEPTH_CONFIG[depth];
+  for (let depth = 0; depth < RECT_SIZES.length - 1; depth++) {
+    const near = getRect(depth);
+    const far = getRect(depth + 1);
 
     // The tile the player would be standing on if they walked `depth`
     // steps forward from where they are now.
     const cellX = player.x + facingDir.dx * depth;
     const cellY = player.y + facingDir.dy * depth;
 
-    const layer = document.createElement("div");
-    layer.className = "depth-layer";
-    layer.style.width = config.width + "px";
-    layer.style.height = config.height + "px";
-
-    // Ceiling and floor strips are always drawn -- every corridor tile
-    // has both.
-    makeBox("wall-ceiling", { height: config.capH + "px" }, layer);
-    makeBox("wall-floor", { height: config.capH + "px" }, layer);
+    // Ceiling and floor are always drawn -- every corridor tile has both.
+    // Each is a trapezoid spanning the full width at "near" (wide) down
+    // to the full width at "far" (narrow).
+    makeSurfacePiece(
+      "ceiling",
+      depth,
+      [
+        [near.left, near.top],
+        [near.right, near.top],
+        [far.right, far.top],
+        [far.left, far.top],
+      ],
+      viewport
+    );
+    makeSurfacePiece(
+      "floor",
+      depth,
+      [
+        [near.left, near.bottom],
+        [near.right, near.bottom],
+        [far.right, far.bottom],
+        [far.left, far.bottom],
+      ],
+      viewport
+    );
 
     // Only draw a side wall if that neighboring tile is actually a wall.
     // If it's open floor, we leave that side see-through for now --
     // rendering side-passages is a later problem, not MVP1's job.
     if (isWall(cellX + leftDir.dx, cellY + leftDir.dy)) {
-      makeBox("wall-left", { width: config.wallW + "px" }, layer);
+      makeSurfacePiece(
+        "left",
+        depth,
+        [
+          [near.left, near.top],
+          [far.left, far.top],
+          [far.left, far.bottom],
+          [near.left, near.bottom],
+        ],
+        viewport
+      );
     }
     if (isWall(cellX + rightDir.dx, cellY + rightDir.dy)) {
-      makeBox("wall-right", { width: config.wallW + "px" }, layer);
-    }
-
-    // Check one tile further ahead: if THAT'S a wall, the corridor
-    // dead-ends here. We draw a forward-facing wall to cap it off, and
-    // stop looping -- there's nothing further to see past a wall.
-    const nextX = cellX + facingDir.dx;
-    const nextY = cellY + facingDir.dy;
-    const blocked = isWall(nextX, nextY);
-
-    if (blocked) {
-      makeBox(
-        "wall-forward",
-        {
-          top: config.capH + "px",
-          left: config.wallW + "px",
-          width: config.width - config.wallW * 2 + "px",
-          height: config.height - config.capH * 2 + "px",
-        },
-        layer
+      makeSurfacePiece(
+        "right",
+        depth,
+        [
+          [near.right, near.top],
+          [far.right, far.top],
+          [far.right, far.bottom],
+          [near.right, near.bottom],
+        ],
+        viewport
       );
     }
 
-    layers.push(layer);
-
-    if (blocked) break; // corridor ends here, don't render deeper depths
-  }
-
-  // Append farthest-away layer first, nearest layer last, so nearer
-  // frames visually sit on top of (and partially hide) farther ones.
-  for (let i = layers.length - 1; i >= 0; i--) {
-    viewport.appendChild(layers[i]);
+    // Check one tile further ahead: if THAT'S a wall, the corridor
+    // dead-ends here. We fill in the far rectangle as a flat wall
+    // facing the player, and stop -- there's nothing further to see
+    // past a wall.
+    const nextX = cellX + facingDir.dx;
+    const nextY = cellY + facingDir.dy;
+    if (isWall(nextX, nextY)) {
+      makeSurfacePiece(
+        "forward",
+        depth + 1,
+        [
+          [far.left, far.top],
+          [far.right, far.top],
+          [far.right, far.bottom],
+          [far.left, far.bottom],
+        ],
+        viewport
+      );
+      break;
+    }
   }
 
   updateDebugLine();

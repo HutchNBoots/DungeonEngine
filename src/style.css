@@ -1,12 +1,13 @@
 /* ===================================================================
    The Last Torchlight -- MVP1 styles
 
-   Right now the corridor walls/floor/ceiling are flat colors. This is
-   a PLACEHOLDER -- real pixel-art textures will replace these colors
+   Right now the corridor walls/floor/ceiling are flat, depth-shaded
+   colors (set inline by game.js, see shadeFor()). This is a
+   PLACEHOLDER -- real pixel-art textures will replace these colors
    once they're generated (see docs/05-art-generation-prompts.md).
-   When that happens, we'll swap `background-color` for
-   `background-image` on these same classes -- the layout code in
-   game.js won't need to change.
+   When that happens, game.js will set `background-image` instead of
+   `background-color` on each piece -- the clip-path shape logic
+   (what actually makes the corridor taper) doesn't need to change.
 =================================================================== */
 
 * {
@@ -69,56 +70,18 @@ body {
   border: 4px solid #444;
 }
 
-/* One "picture frame" of the corridor at a given depth. */
-.depth-layer {
+/* One wall/floor/ceiling/forward-wall piece of the corridor. Each is
+   sized to fill the whole viewport, then CSS clip-path (set in
+   game.js, per piece) cuts it down to a tapered trapezoid -- that
+   taper is what makes the hallway look like it recedes into the
+   distance instead of looking like stacked boxes. Because every
+   piece's shape is clipped to its own non-overlapping region, we
+   don't need to worry about stacking order between pieces. */
+.corridor-surface {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-/* The four pieces that make up a depth-layer frame. */
-.wall-ceiling,
-.wall-floor,
-.wall-left,
-.wall-right,
-.wall-forward {
-  position: absolute;
-}
-
-.wall-ceiling {
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100%;
-  background-color: #1a1a2e;
-}
-
-.wall-floor {
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  background-color: #3a2a1a;
-}
-
-.wall-left {
-  top: 0;
-  left: 0;
   height: 100%;
-  background-color: #555;
-  border-right: 1px solid #222;
-}
-
-.wall-right {
-  top: 0;
-  right: 0;
-  height: 100%;
-  background-color: #4a4a4a;
-  border-left: 1px solid #222;
-}
-
-.wall-forward {
-  background-color: #333;
-  border: 1px solid #222;
 }
 
 #debug-line {
