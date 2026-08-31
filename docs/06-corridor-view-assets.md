@@ -4,6 +4,42 @@
 
 ---
 
+## 0. Full use-case taxonomy (map-driven, not just "corridor shapes")
+
+The first pass at this doc only worked out corridor topology (straight/dead-end/corner/T-junction). That's not the full picture of what a real dungeon map can put in front of the player — rooms, wide passages, and off-center viewing angles are all real cases a map can produce. This section works through all of them, organized by category, and is honest about which ones the current renderer already handles and which ones it can't.
+
+**The one fact that decides everything below:** `renderCorridor()` only ever asks "is there a wall exactly 1 tile to the side of the path directly ahead of me" at each depth step. It has no concept of a wall 2+ tiles away laterally, and `RECT_SIZES` (the perspective shrink curve) doesn't encode real corridor/room width at all — it's the same fixed curve regardless of whether the space is 1 tile or 5 tiles wide. That single fact is why some cases below "just work" and others genuinely don't.
+
+### A. Corridor topology (1-tile-wide passages) — already covered, no engine changes needed
+Straight, dead-end (at any depth), left corner, right corner, T-junction (either or both sides open, forward open or blocked), 4-way crossing, S-bends/zigzags. All of these are just different yes/no patterns of the same per-depth check the renderer already does — confirmed working, this is what the first version of this doc covered.
+
+### B. Open spaces wider than 1 tile (rooms, wide corridors) — partially works, partially a real gap
+This is the category that needed the deeper look. Breaking "a room" down into what actually happens:
+
+- **B1 — Walking dead-center toward a room's far wall, far wall within render distance.** Already works today, no code change. The renderer picks up the far wall as a forward-cap at whatever depth it's actually at — same code path as a dead end.
+- **B2 — The far wall is wider than 1 tile.** Also already fine, for a reason worth calling out: the forward-cap piece is a *repeating texture*, not a fixed-size image, so it stretches to whatever width is needed with zero new assets. This is different from the side-wall taper problem — repeating textures scale for free, tapered art doesn't.
+- **B3 — Room continues past render distance.** Same as an open corridor (fades to black). Already fine.
+- **B4 — Standing off-center in a room, or anywhere wider than 1 tile, with a side wall more than 1 tile away.** **This is the real, genuine gap.** The renderer never checks anything beyond 1 tile to the side, so that wall simply isn't drawn — you'd see void on that side even though a wall exists a couple of tiles over. The moment you *turn to face it directly*, it renders correctly (that's just a forward-cap at whatever depth). So the precise gap is: **peripheral walls (to your side, not dead ahead) beyond 1 tile away never render.** Worth knowing: the original Dungeon Master and Eye of the Beholder had this exact same limitation — they also only ever rendered dead-ahead walls and immediately-adjacent side walls, nothing at a wider oblique angle. It's a real constraint of this whole genre's classic engines, not a shortcut unique to our placeholder build.
+
+### C. Multi-tile-wide corridors (2-3 tiles wide, short of a full "room")
+Same situation as B4 — walking off-center in a wide-but-not-huge passage has the identical peripheral-wall gap. No new case, just confirms B4 applies at smaller scale too.
+
+### D. Doors / features on side walls vs. straight ahead
+Every door/archway use case considered so far assumed you walk *straight into* it (a forward-cap). Open question for Chapter 1's actual design: will any door ever sit in a *side* wall — something you'd see peripherally as you walk past, not walk straight into? If yes, that needs new tapered art (a side-wall-with-a-door-cut-in, per depth) — a real catalog expansion. If every door in Chapter 1 is something you walk straight into, the existing `DOOR-CAP` concept already covers it with zero extra art.
+
+### E. Free-standing obstructions (pillars/columns in an open room)
+A column surrounded by floor on all sides is a genuinely different visual object from a bounding wall — it'd need its own prop-style art (viewed at a few depths/angles), not a reuse of `WALL-SIDE`/`WALL-CAP`. Flagging as a distinct future asset category, not scoping it now since it depends entirely on whether Chapter 1's room designs use them.
+
+### F. Non-wall floor features (pits, stairs, trapdoors, item pedestals)
+Not wall assets at all, but genuinely part of "what the view needs to show" on a full map. Flagging as a separate future asset category (probably tied to the puzzle/item work in MVP2-3) rather than folding it into this wall-focused doc.
+
+### Net read
+- Categories A, B1-B3, C(-when-facing-it) are **fully covered by the 4-asset plan already scoped** (`WALL-SIDE-0..3` + the existing repeating-texture cap).
+- Category B4 (peripheral walls beyond 1 tile) is a **real engine gap**, not an asset gap — fixing it means widening what the renderer samples at each depth (checking more than 1 tile to each side), which is a bigger structural change, not new art.
+- Categories D, E, F are **open scope questions** that depend on what Chapter 1's actual map design calls for, not on the rendering engine at all.
+
+---
+
 ## 1. How the renderer actually works (context for the asset list)
 
 `renderCorridor()` in `game.js` doesn't draw one scene — it walks forward depth by depth (0 = the tile you're standing on, 1 = one step ahead, 2 = two steps ahead...) and at each depth independently asks three yes/no questions:
@@ -16,9 +52,9 @@ Whatever the answers are, it draws the matching pieces and moves to the next dep
 
 ---
 
-## 2. View use cases
+## 2. View use cases (corridor topology specifically)
 
-These are the situations the corridor view needs to be able to show, in MVP1's actual grid-based dungeon (a real maze with turns, not one straight hallway):
+The 4 scenarios below are Category A from Section 0 — the corridor-shape cases, all fully working today. See Section 0 for the full picture including rooms, wide passages, and where the real gaps are.
 
 | # | Use case | Example |
 |---|---|---|
@@ -26,10 +62,6 @@ These are the situations the corridor view needs to be able to show, in MVP1's a
 | UC2 | **Dead end** — walls both sides, blocked straight ahead, at some depth 0–3 | Corridor stops |
 | UC3 | **Corner / turn** — wall on one side continues, the other side opens up, forward is blocked (forcing a turn) | Path bends left or right |
 | UC4 | **T-junction / crossroads** — openings on both sides at some depth, corridor may or may not continue ahead | Branch point |
-| UC5 | **Doorway ahead** — same as a dead end, but the cap is a door instead of a blank wall | *(MVP3, not needed yet)* |
-| UC6 | **Standing in a wide/open room** (more than one tile wide) | *(flagged below — current engine can't really do this yet)* |
-
-**UC6 note:** the renderer only ever checks "is the *one* tile beside me a wall or not" — it has no idea whether an opening is a 1-tile side passage or the edge of a huge room. Right now both just render as blackness on that side. Making a genuinely wide room look right (seeing a distant far wall across an open room) is a bigger rendering problem than this engine currently solves — flagging it now so it's a known gap, not something to solve today. If Chapter 1's map design leans on big rooms rather than corridors, this needs its own follow-up.
 
 UC1–UC4 are all just different arrangements of the same pieces — see below.
 
