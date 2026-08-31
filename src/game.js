@@ -143,6 +143,10 @@ function rightOfFacing(facing) {
 // darkens these the further away a piece is, which is what sells the
 // "fading into the dark" look -- without it, every depth would be the
 // same flat brightness and look like stacked cardboard again.
+//
+// Floor and ceiling still use these flat colors (no art for them yet).
+// left/right/forward keep an entry here too, purely as a fallback
+// color shown if the real wall texture below ever fails to load.
 const SURFACE_COLORS = {
   ceiling: { h: 245, s: 35, l: 14 },
   floor: { h: 30, s: 35, l: 20 },
@@ -156,6 +160,35 @@ function shadeFor(surface, depth) {
   const falloff = Math.pow(0.82, depth); // each step back gets a bit darker
   const lightness = Math.max(base.l * falloff, 3);
   return "hsl(" + base.h + ", " + base.s + "%, " + lightness.toFixed(1) + "%)";
+}
+
+// Real wall art (Dad's sheet, sliced by tools/slice_tileset.py). Walls
+// (left/right/forward) use this; floor/ceiling don't have real art yet
+// so they keep using shadeFor() above.
+const WALL_TEXTURE_URL = "../assets/tiles/wall_plain_01.png";
+const WALL_SURFACES = new Set(["left", "right", "forward"]);
+
+// The texture tile is drawn smaller at greater depth -- that's what
+// makes the brickwork look like it's shrinking into the distance,
+// the same way the lightness falloff makes it look like it's getting
+// darker. Real perspective would do this automatically; since our
+// walls are flat CSS shapes rather than true 3D, we fake it by hand.
+const WALL_TEXTURE_BASE_SIZE = 130; // px, at depth 0 (closest)
+const WALL_TEXTURE_SHRINK = 0.78; // multiplied in once per step of depth
+
+function wallTextureSizeFor(depth) {
+  const size = WALL_TEXTURE_BASE_SIZE * Math.pow(WALL_TEXTURE_SHRINK, depth);
+  const px = Math.max(size, 24) + "px";
+  return px + " " + px;
+}
+
+// A see-through black layer drawn on top of the texture, darker at
+// greater depth. Stacking a gradient over an image like this is how
+// you tint a background-image in CSS -- there's no direct way to
+// "darken an image" the way shadeFor() darkens a plain color.
+function fogOverlayFor(depth) {
+  const darkness = Math.min(depth * 0.22, 0.82);
+  return "rgba(4, 4, 8, " + darkness.toFixed(2) + ")";
 }
 
 // CSS clip-path needs percentages (so the shape still lines up if the
@@ -182,7 +215,25 @@ function makeSurfacePiece(surfaceType, depth, points, parent) {
   const piece = document.createElement("div");
   piece.className = "corridor-surface";
   piece.style.clipPath = clipPathFromPoints(points);
+
+  // Fallback color first, in case the texture below fails to load --
+  // background-color and background-image are independent properties,
+  // so the color still shows through if the image 404s.
   piece.style.backgroundColor = shadeFor(surfaceType, depth);
+
+  if (WALL_SURFACES.has(surfaceType)) {
+    piece.style.backgroundImage =
+      "linear-gradient(" +
+      fogOverlayFor(depth) +
+      ", " +
+      fogOverlayFor(depth) +
+      "), url('" +
+      WALL_TEXTURE_URL +
+      "')";
+    piece.style.backgroundSize = wallTextureSizeFor(depth);
+    piece.style.backgroundRepeat = "repeat";
+  }
+
   parent.appendChild(piece);
   return piece;
 }
