@@ -6,7 +6,7 @@
 >
 > **Dad:** worth a quick sanity check on the style/resolution choices below before generating for real — these are reasonable defaults, not locked decisions.
 >
-> **How these get used in code (no effect on the prompts below):** the corridor renderer draws each wall/floor/ceiling piece as a tapered shape (CSS `clip-path`), cut out of the flat square texture — the texture itself stays a plain seamless tile, the code does the tapering. One thing still to build when real textures go in: the same texture should look smaller/more compressed on farther pieces (real perspective shrinks bricks with distance), which will be a `background-size` change per depth band in `game.js`, not a different image asset.
+> **How these get used in code (no effect on the prompts below):** for the wall texture, we learned the hard way that just cropping a flat tile into a tapered shape (CSS `clip-path`) isn't enough — the brick pattern itself needs to visibly shrink toward the vanishing point, or it reads as flat and unconvincing. The fix (`tools/generate_wall_side_assets.py`) pre-warps the flat texture into each depth band's exact trapezoid shape using a Pillow perspective transform, once, offline — see `docs/06-corridor-view-assets.md`. Floor and ceiling will get the same treatment once real textures exist for them: a similar script warping `floor.png`/`ceiling.png` into their own depth-band trapezoids, not just a flat repeating tile. The prompts below don't need to change for this — it's still just a plain seamless square texture, the warping happens after.
 
 ---
 
