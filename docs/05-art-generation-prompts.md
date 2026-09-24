@@ -12,17 +12,34 @@
 
 ## Style Guide — paste this before every prompt
 
-Image-gen tools drift in style between separate generations. To keep the wall, floor, ceiling, and every future sprite feeling like they belong in the same game, start every prompt with this block:
+**If your tool supports a reference/style image, use one — this matters more than the wording below.** `assets/tiles/wall_plain_01.png` already nails the look we want (flat brick shapes, hard dark outlines, no photo texture). Upload it and ask the tool to match its style for floor/ceiling/anything else, if it supports that ("image-to-image", "style reference", "match this image"). This is the single most reliable way to keep results consistent — wording alone can't guarantee it, especially since a first attempt at a floor texture came back fully photorealistic (soft gradients, film grain, realistic lighting) instead of pixel art, even with the style guide below already in the prompt.
+
+Image-gen tools vary a lot in how literally they take "pixel art" as a style word — some default toward photorealistic/painterly output unless pushed hard with explicit, concrete constraints. Use this block, and don't soften it:
 
 ```
-Dark fantasy dungeon crawler pixel art, in the style of Dungeon Master (1987)
-and Eye of the Beholder. Chunky, readable pixel art — NOT smooth or
-anti-aliased, NOT photorealistic. Cold grey stone dungeon walls, warm
-orange torchlight as the main light source. Limited, moody color
-palette. Flat lighting with hard-edged shadows, no soft gradients.
+Retro 16-bit pixel art sprite/tile, like a SNES or Genesis dungeon
+crawler RPG (Dungeon Master, Eye of the Beholder, Legend of Grimrock's
+pixel-art tiles). Drawn at a genuinely low native resolution (imagine
+32x32 or 64x64 pixels) and scaled up with hard nearest-neighbor
+scaling — NOT smoothed, NOT anti-aliased, NOT upscaled with any
+blur/interpolation.
+
+Flat, solid color fills only. Each distinct surface (a brick, a
+crack, a shadow) is ONE flat color with a hard edge to the next, like
+cel-shading — never a soft gradient, never a blend. Dark, mostly
+straight or hard-diagonal outlines between shapes, like a comic panel.
+
+STRICT NEGATIVES — none of these should appear at all: photographic
+texture, film grain, noise, realistic surface detail, ambient
+occlusion, soft/blurry shadows, 3D render, photo, painterly brushwork,
+smooth gradients of any kind.
+
+Cold grey stone dungeon walls, warm orange torchlight as the main
+light source. Limited, moody color palette (aim for well under 20
+distinct colors in the final image).
 ```
 
-If your tool supports using a reference image (image-to-image, or "match the style of this image"), generate the wall texture first, then feed it in as the style reference for everything after — that keeps the palette locked across all the pieces.
+If a first attempt still comes back too smooth/photographic, that specific tool may just not be good at genuine pixel art regardless of wording — worth trying a different image-gen tool for these assets rather than fighting the prompt further.
 
 ---
 
