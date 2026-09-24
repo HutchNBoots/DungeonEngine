@@ -199,7 +199,12 @@ function wallSideImageUrl(depth, side) {
 // you tint a background-image in CSS -- there's no direct way to
 // "darken an image" the way shadeFor() darkens a plain color.
 function fogOverlayFor(depth) {
-  const darkness = Math.min(depth * 0.22, 0.82);
+  // Capped well under 1 on purpose: a wall piece with no closer, brighter
+  // neighbor on the same side (e.g. an opening right beside the player
+  // that closes back in one step further) needs to still read as "wall,
+  // fading into darkness" rather than disappearing into the background
+  // and looking like there's nothing there at all.
+  const darkness = Math.min(depth * 0.14, 0.5);
   return "rgba(4, 4, 8, " + darkness.toFixed(2) + ")";
 }
 
