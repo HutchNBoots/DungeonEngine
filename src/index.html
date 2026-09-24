@@ -20,7 +20,15 @@
   <!-- Hidden until "Begin" is clicked. Holds the corridor view and controls. -->
   <div id="game-screen" class="hidden">
 
+    <!-- MVP2: the party, shown above the corridor. Click a hero to make -->
+    <!-- them "active" -- picked-up items and the inventory panel below -->
+    <!-- always apply to whichever hero is active. No stats/HP yet -- -->
+    <!-- that's later, once combat (MVP4/5) actually needs them. -->
+    <div id="party-panel"></div>
+
     <!-- The corridor gets built here by JavaScript every time the player moves. -->
+    <!-- Item/lore-object icons get added on top of it when one is on the -->
+    <!-- player's current tile. -->
     <div id="viewport"></div>
 
     <!-- Small debug line so we can see facing/position while testing. -->
@@ -33,6 +41,23 @@
       <button id="btn-forward">&#8593;</button>
       <button id="btn-turn-right">&#8631;</button>
       <button id="btn-backward">&#8595;</button>
+    </div>
+
+    <button id="btn-inventory">Inventory (E)</button>
+
+    <!-- MVP2: the active hero's equip slots + general item slots. -->
+    <!-- Hidden until opened via E or the button above. -->
+    <div id="inventory-panel" class="hidden">
+      <h2 id="inventory-hero-name"></h2>
+      <div id="inventory-equip-slots"></div>
+      <div id="inventory-general-slots"></div>
+      <button id="btn-close-inventory">Close</button>
+    </div>
+
+    <!-- MVP2: shows a lore object's message when clicked (e.g. a corpse). -->
+    <div id="lore-overlay" class="hidden">
+      <p id="lore-text"></p>
+      <button id="btn-close-lore">Close</button>
     </div>
 
   </div>

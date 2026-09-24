@@ -94,6 +94,98 @@ function move(stepDirection) {
 
 
 // -------------------------------------------------------------------
+// 2b. PARTY & ITEMS -- MVP2: Items & Lore Interaction
+// -------------------------------------------------------------------
+// Just enough of a party to hang a per-hero inventory on -- a name and
+// a front/back line. No HP, mana, or class tags yet: those depend on
+// stats that don't exist until combat (MVP4/5) actually needs them.
+const party = [
+  { name: "Hero 1", line: "front", equipment: { weapon: null, armor: null }, items: [null, null, null, null] },
+  { name: "Hero 2", line: "front", equipment: { weapon: null, armor: null }, items: [null, null, null, null] },
+  { name: "Hero 3", line: "back", equipment: { weapon: null, armor: null }, items: [null, null, null, null] },
+  { name: "Hero 4", line: "back", equipment: { weapon: null, armor: null }, items: [null, null, null, null] },
+];
+
+// Which hero picked-up items go to, and whose inventory the panel shows.
+// Click a hero in the party panel to change this.
+let activeHeroIndex = 0;
+
+function getActiveHero() {
+  return party[activeHeroIndex];
+}
+
+// Items and lore objects placed on the TEST map (see the note on
+// dungeonMap above -- these positions aren't the real Chapter 1
+// content either, just enough to test picking things up and reading
+// a lore message). `slot` says which equipment slot an item goes in
+// -- "general" means it's not equippable, just carried.
+const mapItems = [
+  { x: 3, y: 1, type: "item", slot: "weapon", name: "Rusted Shortsword", color: "#8a8a8a", pickedUp: false },
+  { x: 5, y: 1, type: "item", slot: "armor", name: "Leather Armor", color: "#7a5230", pickedUp: false },
+  { x: 7, y: 1, type: "item", slot: "general", name: "Health Potion", color: "#b23b3b", pickedUp: false },
+  {
+    x: 6,
+    y: 7,
+    type: "lore",
+    name: "Fallen Adventurer",
+    color: "#55555f",
+    loreText: "A broken torch lies beside a set of old bones. Whoever this was, they never made it out.",
+    pickedUp: false,
+  },
+];
+
+// Finds a not-yet-picked-up item/lore-object sitting on the player's
+// own tile, if any -- this test map only ever puts one per tile.
+function itemAtPlayerPosition() {
+  return mapItems.find(
+    (mapItem) => !mapItem.pickedUp && mapItem.x === player.x && mapItem.y === player.y
+  );
+}
+
+// What happens when the player clicks an item/lore-object icon.
+function handleMapIconClick(mapItem) {
+  if (mapItem.type === "lore") {
+    showMessage(mapItem.loreText);
+    return; // lore objects (like a corpse) stay on the map, re-readable
+  }
+
+  const hero = getActiveHero();
+  const emptySlotIndex = hero.items.indexOf(null);
+  if (emptySlotIndex === -1) {
+    showMessage(hero.name + "'s inventory is full.");
+    return;
+  }
+  hero.items[emptySlotIndex] = mapItem;
+  mapItem.pickedUp = true;
+  renderCorridor(); // removes the icon, since the item is picked up now
+  renderInventoryPanel(); // keeps the panel in sync if it's open
+}
+
+// Moves an item from a general inventory slot into its matching
+// equipment slot (weapon/armor), swapping back whatever was equipped
+// there before. Clicking a "general" (non-equippable) item does nothing.
+function equipItem(hero, generalSlotIndex) {
+  const item = hero.items[generalSlotIndex];
+  if (!item || item.slot === "general") return;
+  const previouslyEquipped = hero.equipment[item.slot];
+  hero.equipment[item.slot] = item;
+  hero.items[generalSlotIndex] = previouslyEquipped;
+  renderInventoryPanel();
+}
+
+// Moves an equipped item back into the first open general slot.
+function unequipItem(hero, slotName) {
+  const item = hero.equipment[slotName];
+  if (!item) return;
+  const emptySlotIndex = hero.items.indexOf(null);
+  if (emptySlotIndex === -1) return; // no room to unequip into
+  hero.items[emptySlotIndex] = item;
+  hero.equipment[slotName] = null;
+  renderInventoryPanel();
+}
+
+
+// -------------------------------------------------------------------
 // 3. RENDERING THE CORRIDOR VIEW
 // -------------------------------------------------------------------
 // Real perspective: imagine a rectangle marking "the edge of what you
@@ -445,6 +537,7 @@ function renderCorridor() {
     }
   }
 
+  renderMapIcon();
   updateDebugLine();
 }
 
@@ -453,6 +546,97 @@ function updateDebugLine() {
   const facingName = DIRECTIONS[player.facing].name;
   debugLine.textContent =
     "x: " + player.x + "  y: " + player.y + "  facing: " + facingName;
+}
+
+// Shows a clickable icon for whatever item/lore-object is on the
+// player's own tile, if any. Just a colored square for now, per the
+// placeholder-first rule -- real icons come once art exists for them.
+function renderMapIcon() {
+  const mapItem = itemAtPlayerPosition();
+  if (!mapItem) return;
+
+  const viewport = document.getElementById("viewport");
+  const icon = document.createElement("div");
+  icon.className = "map-icon";
+  icon.style.backgroundColor = mapItem.color;
+  icon.title = mapItem.name;
+  icon.addEventListener("click", () => handleMapIconClick(mapItem));
+  viewport.appendChild(icon);
+}
+
+// Draws the party panel: one clickable box per hero. Clicking a hero
+// makes them "active" -- that's who picked-up items go to, and whose
+// inventory the panel below shows.
+function renderPartyPanel() {
+  const panel = document.getElementById("party-panel");
+  panel.innerHTML = "";
+
+  party.forEach((hero, index) => {
+    const box = document.createElement("div");
+    box.className = "hero-box" + (index === activeHeroIndex ? " active" : "");
+    box.innerHTML =
+      '<div class="hero-name">' + hero.name + "</div>" +
+      '<div class="hero-line">' + hero.line + " line</div>";
+    box.addEventListener("click", () => {
+      activeHeroIndex = index;
+      renderPartyPanel();
+      renderInventoryPanel();
+    });
+    panel.appendChild(box);
+  });
+}
+
+// Draws the active hero's inventory: their two equip slots (weapon,
+// armor -- the "paper doll", simplified to plain labeled boxes since
+// there's no character art yet) plus their general item slots.
+function renderInventoryPanel() {
+  const hero = getActiveHero();
+  document.getElementById("inventory-hero-name").textContent = hero.name + "'s Inventory";
+
+  const equipContainer = document.getElementById("inventory-equip-slots");
+  equipContainer.innerHTML = "";
+  ["weapon", "armor"].forEach((slotName) => {
+    const item = hero.equipment[slotName];
+    const slotEl = document.createElement("div");
+    slotEl.className = "item-slot" + (item ? " filled" : "");
+    slotEl.innerHTML =
+      '<div class="slot-label">' + slotName + "</div>" + (item ? item.name : "empty");
+    if (item) {
+      slotEl.addEventListener("click", () => unequipItem(hero, slotName));
+    }
+    equipContainer.appendChild(slotEl);
+  });
+
+  const generalContainer = document.getElementById("inventory-general-slots");
+  generalContainer.innerHTML = "";
+  hero.items.forEach((item, index) => {
+    const slotEl = document.createElement("div");
+    slotEl.className = "item-slot" + (item ? " filled" : "");
+    slotEl.innerHTML = item ? item.name : '<div class="slot-label">empty</div>';
+    if (item) {
+      slotEl.addEventListener("click", () => equipItem(hero, index));
+    }
+    generalContainer.appendChild(slotEl);
+  });
+}
+
+function toggleInventory() {
+  const panel = document.getElementById("inventory-panel");
+  const opening = panel.classList.contains("hidden");
+  panel.classList.toggle("hidden");
+  if (opening) {
+    renderInventoryPanel();
+  }
+}
+
+// Generic popup for lore text -- also reused for small system messages
+// like "inventory is full" rather than building a second message box.
+function showMessage(text) {
+  document.getElementById("lore-text").textContent = text;
+  document.getElementById("lore-overlay").classList.remove("hidden");
+}
+function hideMessage() {
+  document.getElementById("lore-overlay").classList.add("hidden");
 }
 
 
@@ -485,6 +669,10 @@ document.getElementById("btn-backward").addEventListener("click", handleBackward
 document.getElementById("btn-turn-left").addEventListener("click", handleTurnLeft);
 document.getElementById("btn-turn-right").addEventListener("click", handleTurnRight);
 
+document.getElementById("btn-inventory").addEventListener("click", toggleInventory);
+document.getElementById("btn-close-inventory").addEventListener("click", toggleInventory);
+document.getElementById("btn-close-lore").addEventListener("click", hideMessage);
+
 document.addEventListener("keydown", (event) => {
   // Only respond to movement keys once the game screen is visible --
   // no point moving the player while the start screen is still up.
@@ -508,6 +696,10 @@ document.addEventListener("keydown", (event) => {
     case "ArrowRight":
       handleTurnRight();
       break;
+    case "e":
+    case "E":
+      toggleInventory();
+      break;
   }
 });
 
@@ -518,5 +710,6 @@ document.addEventListener("keydown", (event) => {
 document.getElementById("start-button").addEventListener("click", () => {
   document.getElementById("start-screen").classList.add("hidden");
   document.getElementById("game-screen").classList.remove("hidden");
+  renderPartyPanel();
   renderCorridor(); // draw the very first frame once the game screen appears
 });

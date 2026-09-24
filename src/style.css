@@ -117,3 +117,161 @@ body {
 #btn-forward    { grid-column: 2; grid-row: 1; }
 #btn-turn-right { grid-column: 3; grid-row: 2; }
 #btn-backward   { grid-column: 2; grid-row: 2; }
+
+/* ---------- Party panel (MVP2) ---------- */
+/* Plain boxes for now -- no portraits/HP bars yet, those need real   */
+/* stats which don't exist until combat (MVP4/5). */
+
+#party-panel {
+  width: 640px;
+  margin: 0 auto 10px;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.hero-box {
+  flex: 1;
+  padding: 6px;
+  background: #17120e;
+  border: 2px solid #4a3a2a;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.hero-box:hover {
+  border-color: #e0a458;
+}
+
+.hero-box.active {
+  border-color: #e0a458;
+  background: #2a1f16;
+}
+
+.hero-box .hero-name {
+  color: #e0a458;
+  font-weight: bold;
+}
+
+.hero-box .hero-line {
+  color: #888;
+  font-size: 11px;
+}
+
+/* ---------- Item/lore-object icons on the floor (MVP2) ---------- */
+/* Placeholder colored squares -- real icons come later, per the      */
+/* placeholder-first rule (01-requirements.md Section 7a). */
+
+.map-icon {
+  position: absolute;
+  left: 50%;
+  bottom: 12%;
+  transform: translateX(-50%);
+  width: 46px;
+  height: 46px;
+  border: 2px solid #111;
+  border-radius: 3px;
+  cursor: pointer;
+  z-index: 5;
+}
+
+.map-icon:hover {
+  outline: 3px solid #e0a458;
+}
+
+/* ---------- Inventory panel (MVP2) ---------- */
+
+#btn-inventory {
+  display: block;
+  margin: 14px auto 0;
+  font-size: 14px;
+  background: #3a2a1a;
+  color: #e0a458;
+  border: 2px solid #e0a458;
+  padding: 6px 16px;
+  cursor: pointer;
+}
+
+#inventory-panel {
+  width: 460px;
+  margin: 14px auto 0;
+  padding: 16px;
+  background: #17120e;
+  border: 2px solid #e0a458;
+  border-radius: 4px;
+}
+
+#inventory-hero-name {
+  margin: 0 0 10px;
+  color: #e0a458;
+  font-size: 18px;
+}
+
+#inventory-equip-slots,
+#inventory-general-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.item-slot {
+  width: 70px;
+  height: 70px;
+  background: #0d0a08;
+  border: 2px solid #4a3a2a;
+  border-radius: 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #888;
+  cursor: pointer;
+  padding: 2px;
+  text-align: center;
+}
+
+.item-slot.filled {
+  border-color: #e0a458;
+  color: #eee;
+}
+
+.item-slot .slot-label {
+  color: #666;
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+/* ---------- Lore overlay (MVP2) ---------- */
+
+#lore-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 20;
+}
+
+/* An #id selector normally beats a .class selector, which would make
+   #lore-overlay's own `display` win over `.hidden`'s -- so `display`
+   only gets set here, on the :not(.hidden) case, letting the plain
+   .hidden rule (in the shared styles above) apply when it's present. */
+#lore-overlay:not(.hidden) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+#lore-text {
+  max-width: 480px;
+  padding: 24px;
+  background: #17120e;
+  border: 2px solid #e0a458;
+  border-radius: 4px;
+  color: #d8cdb8;
+  font-size: 16px;
+  line-height: 1.6;
+}
