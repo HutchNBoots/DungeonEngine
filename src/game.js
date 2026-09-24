@@ -18,9 +18,11 @@
 // -------------------------------------------------------------------
 // 1. THE DUNGEON MAP
 // -------------------------------------------------------------------
-// '#' = wall, '.' = floor. This is a TEST layout for building/testing
-// the movement + rendering engine -- it is NOT the real Chapter 1
-// layout yet. Swap this out once the actual chapter map is designed.
+// '#' = wall, '.' = floor, 'D' = door (see the door section below --
+// closed blocks like a wall, open doesn't). This is a TEST layout for
+// building/testing the movement + rendering engine -- it is NOT the
+// real Chapter 1 layout yet. Swap this out once the actual chapter
+// map is designed.
 //
 // Row 0 is the top of the map. dungeonMap[y][x] gives the tile at
 // column x, row y.
@@ -28,11 +30,11 @@ const dungeonMap = [
   "##########",
   "#........#",
   "#.######.#",
-  "#.#....#.#",
+  "#.D....#.#",
   "#.#.##.#.#",
   "#.#.#..#.#",
   "#.#.#.##.#",
-  "#...#....#",
+  "#...D....#",
   "#.######.#",
   "##########",
 ];
@@ -44,7 +46,46 @@ function isWall(x, y) {
   if (row === undefined) return true;
   const tile = row[x];
   if (tile === undefined) return true;
+  if (tile === "D") return !isDoorOpen(x, y); // closed door blocks like a wall
   return tile === "#";
+}
+
+// -------------------------------------------------------------------
+// 1b. DOORS -- MVP3: Map & Puzzle
+// -------------------------------------------------------------------
+// The map above just marks WHERE a door is; whether it's open is
+// separate, mutable state, kept here rather than editing the map
+// string in place (strings can't be edited character-by-character in
+// JS anyway).
+const doorStates = {};
+
+function doorKey(x, y) {
+  return x + "," + y;
+}
+function isDoorTile(x, y) {
+  const row = dungeonMap[y];
+  return row !== undefined && row[x] === "D";
+}
+function isDoorOpen(x, y) {
+  return doorStates[doorKey(x, y)] === "open";
+}
+function openDoor(x, y) {
+  doorStates[doorKey(x, y)] = "open";
+}
+
+// Doors in this set can't be opened by just clicking them -- they're
+// wired to a puzzle instead (see the item-socket below). Every other
+// door opens with a plain click.
+const PUZZLE_LOCKED_DOORS = new Set(["4,7"]);
+
+function handleDoorClick(x, y) {
+  if (isDoorOpen(x, y)) return;
+  if (PUZZLE_LOCKED_DOORS.has(doorKey(x, y))) {
+    showMessage("This door is locked. Something else must open it.");
+    return;
+  }
+  openDoor(x, y);
+  renderCorridor();
 }
 
 
@@ -114,6 +155,10 @@ function getActiveHero() {
   return party[activeHeroIndex];
 }
 
+// The minimap only ever shows anything once a map scroll is found --
+// never automatically, per the locked decision in CLAUDE.md.
+let mapRevealed = false;
+
 // Items and lore objects placed on the TEST map (see the note on
 // dungeonMap above -- these positions aren't the real Chapter 1
 // content either, just enough to test picking things up and reading
@@ -132,6 +177,27 @@ const mapItems = [
     loreText: "A broken torch lies beside a set of old bones. Whoever this was, they never made it out.",
     pickedUp: false,
   },
+  { x: 2, y: 1, type: "item", slot: "general", name: "Blue Gem", color: "#3a6ea8", pickedUp: false },
+  {
+    x: 8,
+    y: 3,
+    type: "item",
+    slot: "general",
+    name: "Map Scroll",
+    color: "#d4c896",
+    effect: "reveal-map", // consumed immediately, never sits in inventory -- see handleMapIconClick
+    pickedUp: false,
+  },
+  {
+    x: 3,
+    y: 7,
+    type: "socket",
+    name: "Ancient Socket",
+    color: "#6a4a8a",
+    requiresItemName: "Blue Gem",
+    linkedDoor: { x: 4, y: 7 },
+    pickedUp: false,
+  },
 ];
 
 // Finds a not-yet-picked-up item/lore-object sitting on the player's
@@ -147,6 +213,34 @@ function handleMapIconClick(mapItem) {
   if (mapItem.type === "lore") {
     showMessage(mapItem.loreText);
     return; // lore objects (like a corpse) stay on the map, re-readable
+  }
+
+  if (mapItem.type === "socket") {
+    const hero = getActiveHero();
+    const matchingSlotIndex = hero.items.findIndex(
+      (item) => item && item.name === mapItem.requiresItemName
+    );
+    if (matchingSlotIndex === -1) {
+      showMessage("This socket needs a " + mapItem.requiresItemName + ".");
+      return;
+    }
+    hero.items[matchingSlotIndex] = null; // the gem is consumed, not returned
+    mapItem.pickedUp = true; // puzzle solved, socket icon disappears
+    openDoor(mapItem.linkedDoor.x, mapItem.linkedDoor.y);
+    showMessage("The " + mapItem.requiresItemName + " clicks into place. A door unlocks nearby.");
+    renderCorridor();
+    renderInventoryPanel();
+    return;
+  }
+
+  // A map scroll reveals the minimap immediately rather than sitting
+  // in the inventory -- reading it is the whole point of picking it up.
+  if (mapItem.effect === "reveal-map") {
+    mapItem.pickedUp = true;
+    mapRevealed = true;
+    showMessage("You found a map! The minimap now shows the dungeon layout.");
+    renderCorridor();
+    return;
   }
 
   const hero = getActiveHero();
@@ -259,6 +353,11 @@ function shadeFor(surface, depth) {
 // straight-on, so a plain repeating texture is already correct for it.
 const WALL_TEXTURE_URL = "../assets/tiles/wall_plain_01.png";
 const WALL_SURFACES = new Set(["forward"]);
+
+// A door filling the forward-facing cap uses this instead -- also from
+// Dad's original sheet, already sliced and ready (see 01-requirements.md
+// Section 7a, which specifically called this out as ready ahead of MVP3).
+const DOOR_TEXTURE_URL = "../assets/tiles/door_wood_01.png";
 
 // The texture tile is drawn smaller at greater depth -- that's what
 // makes the brickwork look like it's shrinking into the distance,
@@ -435,6 +534,30 @@ function makeFloorPiece(depth, near, far, points, parent) {
   return piece;
 }
 
+// A door filling the forward-facing cap. Same idea as the plain wall
+// cap (viewed straight-on, so no perspective warp needed) but uses
+// the door image stretched to fill the opening, and is clickable.
+function makeDoorPiece(doorX, doorY, depth, points, parent) {
+  const piece = document.createElement("div");
+  piece.className = "corridor-surface";
+  piece.style.clipPath = clipPathFromPoints(points);
+  piece.style.backgroundColor = shadeFor("forward", depth);
+  piece.style.backgroundImage =
+    "linear-gradient(" +
+    fogOverlayFor(depth) +
+    ", " +
+    fogOverlayFor(depth) +
+    "), url('" +
+    DOOR_TEXTURE_URL +
+    "')";
+  piece.style.backgroundSize = "100% 100%";
+  piece.style.backgroundRepeat = "no-repeat";
+  piece.style.cursor = "pointer";
+  piece.addEventListener("click", () => handleDoorClick(doorX, doorY));
+  parent.appendChild(piece);
+  return piece;
+}
+
 // Builds and displays the corridor view for the player's current
 // position + facing. Called every time the player moves or turns.
 function renderCorridor() {
@@ -515,29 +638,32 @@ function renderCorridor() {
       );
     }
 
-    // Check one tile further ahead: if THAT'S a wall, the corridor
-    // dead-ends here. We fill in the far rectangle as a flat wall
-    // facing the player, and stop -- there's nothing further to see
-    // past a wall.
+    // Check one tile further ahead: if THAT'S a wall (or a closed
+    // door), the corridor dead-ends here. We fill in the far rectangle
+    // with a wall or door facing the player, and stop -- there's
+    // nothing further to see past it. An OPEN door isn't a wall as far
+    // as isWall() is concerned, so this just doesn't trigger for it --
+    // rendering continues past it like it was never there.
     const nextX = cellX + facingDir.dx;
     const nextY = cellY + facingDir.dy;
     if (isWall(nextX, nextY)) {
-      makeSurfacePiece(
-        "forward",
-        depth + 1,
-        [
-          [far.left, far.top],
-          [far.right, far.top],
-          [far.right, far.bottom],
-          [far.left, far.bottom],
-        ],
-        viewport
-      );
+      const capPoints = [
+        [far.left, far.top],
+        [far.right, far.top],
+        [far.right, far.bottom],
+        [far.left, far.bottom],
+      ];
+      if (isDoorTile(nextX, nextY)) {
+        makeDoorPiece(nextX, nextY, depth + 1, capPoints, viewport);
+      } else {
+        makeSurfacePiece("forward", depth + 1, capPoints, viewport);
+      }
       break;
     }
   }
 
   renderMapIcon();
+  renderMinimap(); // keeps the player marker current if the panel's open
   updateDebugLine();
 }
 
@@ -629,6 +755,40 @@ function toggleInventory() {
   }
 }
 
+// Draws the minimap: a small colored cell per map tile, plus a marker
+// for the player's own position. Just a plain grid for now, per
+// placeholder-first -- no map art exists yet.
+function renderMinimap() {
+  const grid = document.getElementById("minimap-grid");
+  grid.innerHTML = "";
+
+  if (!mapRevealed) {
+    grid.textContent = "No map scroll found yet.";
+    return;
+  }
+
+  dungeonMap.forEach((row, y) => {
+    const rowEl = document.createElement("div");
+    rowEl.className = "minimap-row";
+    for (let x = 0; x < row.length; x++) {
+      const tile = row[x];
+      const cell = document.createElement("div");
+      cell.className = "minimap-cell " + (tile === "#" ? "wall" : tile === "D" ? "door" : "floor");
+      if (x === player.x && y === player.y) {
+        cell.classList.add("player");
+      }
+      rowEl.appendChild(cell);
+    }
+    grid.appendChild(rowEl);
+  });
+}
+
+function toggleMinimap() {
+  const panel = document.getElementById("minimap-panel");
+  panel.classList.toggle("hidden");
+  renderMinimap();
+}
+
 // Generic popup for lore text -- also reused for small system messages
 // like "inventory is full" rather than building a second message box.
 function showMessage(text) {
@@ -672,6 +832,8 @@ document.getElementById("btn-turn-right").addEventListener("click", handleTurnRi
 document.getElementById("btn-inventory").addEventListener("click", toggleInventory);
 document.getElementById("btn-close-inventory").addEventListener("click", toggleInventory);
 document.getElementById("btn-close-lore").addEventListener("click", hideMessage);
+document.getElementById("btn-minimap").addEventListener("click", toggleMinimap);
+document.getElementById("btn-close-minimap").addEventListener("click", toggleMinimap);
 
 document.addEventListener("keydown", (event) => {
   // Only respond to movement keys once the game screen is visible --
@@ -699,6 +861,10 @@ document.addEventListener("keydown", (event) => {
     case "e":
     case "E":
       toggleInventory();
+      break;
+    case "m":
+    case "M":
+      toggleMinimap();
       break;
   }
 });

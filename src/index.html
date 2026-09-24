@@ -43,7 +43,10 @@
       <button id="btn-backward">&#8595;</button>
     </div>
 
-    <button id="btn-inventory">Inventory (E)</button>
+    <div id="panel-buttons">
+      <button id="btn-inventory">Inventory (E)</button>
+      <button id="btn-minimap">Map (M)</button>
+    </div>
 
     <!-- MVP2: the active hero's equip slots + general item slots. -->
     <!-- Hidden until opened via E or the button above. -->
@@ -54,7 +57,16 @@
       <button id="btn-close-inventory">Close</button>
     </div>
 
+    <!-- MVP3: only ever shows anything once a map scroll is found -- -->
+    <!-- see mapRevealed in game.js. Never fills in automatically. -->
+    <div id="minimap-panel" class="hidden">
+      <h2>Map</h2>
+      <div id="minimap-grid"></div>
+      <button id="btn-close-minimap">Close</button>
+    </div>
+
     <!-- MVP2: shows a lore object's message when clicked (e.g. a corpse). -->
+    <!-- MVP3: also used for the item-socket puzzle's messages. -->
     <div id="lore-overlay" class="hidden">
       <p id="lore-text"></p>
       <button id="btn-close-lore">Close</button>
