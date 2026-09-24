@@ -194,6 +194,15 @@ function wallSideImageUrl(depth, side) {
   return "../assets/tiles/wall_side_depth" + depth + suffix + ".png";
 }
 
+// Floor uses pre-warped images too (tools/generate_floor_assets.py) --
+// same reasoning as the side walls, just tapering top-to-bottom
+// (full width close to the player, narrower farther away) instead of
+// left-to-right. Ceiling doesn't have real art yet, so it still just
+// uses shadeFor() below.
+function floorImageUrl(depth) {
+  return "../assets/tiles/floor_depth" + depth + ".png";
+}
+
 // A see-through black layer drawn on top of the texture, darker at
 // greater depth. Stacking a gradient over an image like this is how
 // you tint a background-image in CSS -- there's no direct way to
@@ -299,6 +308,41 @@ function makeSideWallPiece(side, depth, near, far, points, parent) {
   return piece;
 }
 
+// Creates the floor piece for one depth band, same approach as
+// makeSideWallPiece but rotated: the floor's bounding box is widest
+// at its near (bottom) edge rather than tallest at its near (left or
+// right) edge.
+function makeFloorPiece(depth, near, far, points, parent) {
+  const piece = document.createElement("div");
+  piece.className = "corridor-surface";
+  piece.style.clipPath = clipPathFromPoints(points);
+  piece.style.backgroundColor = shadeFor("floor", depth); // fallback if the image fails to load
+
+  const bboxWidth = near.right - near.left;
+  const bboxHeight = near.bottom - far.bottom;
+
+  const image = document.createElement("div");
+  image.style.position = "absolute";
+  image.style.left = toPercent(near.left, VIEWPORT_WIDTH);
+  image.style.top = toPercent(far.bottom, VIEWPORT_HEIGHT);
+  image.style.width = toPercent(bboxWidth, VIEWPORT_WIDTH);
+  image.style.height = toPercent(bboxHeight, VIEWPORT_HEIGHT);
+  image.style.backgroundImage =
+    "linear-gradient(" +
+    fogOverlayFor(depth) +
+    ", " +
+    fogOverlayFor(depth) +
+    "), url('" +
+    floorImageUrl(depth) +
+    "')";
+  image.style.backgroundSize = "100% 100%";
+  image.style.backgroundRepeat = "no-repeat";
+  piece.appendChild(image);
+
+  parent.appendChild(piece);
+  return piece;
+}
+
 // Builds and displays the corridor view for the player's current
 // position + facing. Called every time the player moves or turns.
 function renderCorridor() {
@@ -332,9 +376,10 @@ function renderCorridor() {
       ],
       viewport
     );
-    makeSurfacePiece(
-      "floor",
+    makeFloorPiece(
       depth,
+      near,
+      far,
       [
         [near.left, near.bottom],
         [near.right, near.bottom],
