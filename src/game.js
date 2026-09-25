@@ -198,6 +198,29 @@ const mapItems = [
     linkedDoor: { x: 4, y: 7 },
     pickedUp: false,
   },
+  // Food items -- real icons this time (sliced from Dad's food sheet,
+  // assets/sprites/items/), rather than the flat placeholder squares
+  // everything else above still uses.
+  {
+    x: 4,
+    y: 1,
+    type: "item",
+    slot: "general",
+    name: "Roast Turkey",
+    color: "#8a5a2a",
+    icon: "../assets/sprites/items/roast_turkey.png",
+    pickedUp: false,
+  },
+  {
+    x: 6,
+    y: 1,
+    type: "item",
+    slot: "general",
+    name: "Red Wine",
+    color: "#5a1a2a",
+    icon: "../assets/sprites/items/red_wine.png",
+    pickedUp: false,
+  },
 ];
 
 // Finds a not-yet-picked-up item/lore-object sitting on the player's
@@ -684,7 +707,10 @@ function renderMapIcon() {
   const viewport = document.getElementById("viewport");
   const icon = document.createElement("div");
   icon.className = "map-icon";
-  icon.style.backgroundColor = mapItem.color;
+  icon.style.backgroundColor = mapItem.color; // fallback if there's no real icon (or it fails to load)
+  if (mapItem.icon) {
+    icon.style.backgroundImage = "url('" + mapItem.icon + "')";
+  }
   icon.title = mapItem.name;
   icon.addEventListener("click", () => handleMapIconClick(mapItem));
   viewport.appendChild(icon);
@@ -715,6 +741,13 @@ function renderPartyPanel() {
 // Draws the active hero's inventory: their two equip slots (weapon,
 // armor -- the "paper doll", simplified to plain labeled boxes since
 // there's no character art yet) plus their general item slots.
+// A small icon thumbnail for an item, if it has one -- falls back to
+// nothing (just the text name) for items without real art yet.
+function itemIconHtml(item) {
+  if (!item.icon) return "";
+  return '<div class="slot-icon" style="background-image:url(\'' + item.icon + "')\"></div>";
+}
+
 function renderInventoryPanel() {
   const hero = getActiveHero();
   document.getElementById("inventory-hero-name").textContent = hero.name + "'s Inventory";
@@ -726,7 +759,7 @@ function renderInventoryPanel() {
     const slotEl = document.createElement("div");
     slotEl.className = "item-slot" + (item ? " filled" : "");
     slotEl.innerHTML =
-      '<div class="slot-label">' + slotName + "</div>" + (item ? item.name : "empty");
+      '<div class="slot-label">' + slotName + "</div>" + (item ? itemIconHtml(item) + item.name : "empty");
     if (item) {
       slotEl.addEventListener("click", () => unequipItem(hero, slotName));
     }
@@ -738,7 +771,7 @@ function renderInventoryPanel() {
   hero.items.forEach((item, index) => {
     const slotEl = document.createElement("div");
     slotEl.className = "item-slot" + (item ? " filled" : "");
-    slotEl.innerHTML = item ? item.name : '<div class="slot-label">empty</div>';
+    slotEl.innerHTML = item ? itemIconHtml(item) + item.name : '<div class="slot-label">empty</div>';
     if (item) {
       slotEl.addEventListener("click", () => equipItem(hero, index));
     }
