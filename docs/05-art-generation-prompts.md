@@ -111,13 +111,52 @@ nothing behind the torch itself. Facing forward, centered in frame.
 
 ---
 
+## MVP4 prep — Skeleton Warrior (drafted early, not needed until MVP4 starts)
+
+One of the 4 Tier 0 monsters (`02-lore.md`): "classic reanimated dungeon guardian, sword and shield, animated by old residual dungeon magic — weak to Strength (shatter the bones)." Tier 0 means **not corrupted** — mundane bones and rusty gear, no glowing effects, no dark magic visuals. That's a real constraint worth keeping in the prompt: later skeleton variants (Skeleton Archer, Knight, Juggernaut) can look tougher, but this one should read as a plain, long-dead guardian, not a demon.
+
+Per `01-requirements.md` Section 7, a monster needs **2-3 hand-drawn size variants** (near/mid/far) rather than one image scaled by code — scaling pixel art down often looks blurry, and a real artist adjusts detail for each size instead of just shrinking it. Same style guide as everything else in this doc, plus the same tip: if your tool supports a reference image, `wall_plain_01.png` still sets the palette/lighting to match.
+
+- **Files:** `assets/sprites/skeleton_warrior_near.png`, `_mid.png`, `_far.png`
+- **Sizes:** near 256×384px, mid 160×240px, far 96×144px — all PNG, **transparent background required** (sprite rule, same as the torch: rendered as `<img>`, never baked into a tile)
+- **Sizes are a starting guess, not locked** — adjust once the actual combat screen layout exists and you can see how much space a monster gets.
+
+```
+[paste style guide above]
+
+A skeleton warrior standing in a dungeon-guardian pose, gripping a
+plain sword and a battered round shield. Ordinary bleached bone,
+NOT glowing, NOT corrupted, no dark magic aura or purple/green
+energy effects -- ancient residual magic reanimates it, but nothing
+about its appearance should look otherwise supernatural. Rusted,
+dented iron/steel gear (sword, shield, maybe a few remaining scraps
+of old armor) -- centuries-old, not fresh or shiny.
+
+Full body visible, facing forward/slightly angled toward the
+viewer, as if seen down a dungeon corridor. FULLY TRANSPARENT
+background -- no floor, no wall, nothing behind the figure itself.
+
+[near variant] 256x384 pixels, tall aspect ratio, full detail
+(individual rib/bone shading, gear texture clearly visible).
+
+[mid variant] 160x240 pixels, same pose, simplified slightly for
+the smaller size -- keep the silhouette instantly readable as the
+same character, drop only the finest detail.
+
+[far variant] 96x144 pixels, same pose again, reduced to bold
+shapes and its most essential silhouette -- readable as a skeleton
+warrior even as a small, distant shape.
+```
+
+---
+
 ## Later MVPs — add sections here when needed
 
 Don't generate these yet — placeholder shapes are correct until each MVP actually starts (per `01-requirements.md` Section 7a):
 
 - **MVP2:** item icons (small, transparent PNGs)
 - **MVP3:** door sprite, puzzle switch/socket art
-- **MVP4:** 4 Tier 0 monster sprites (Dungeon Rats, Rusted Sentinel, Cave Bats, Skeleton Warrior) — each needs 2-3 hand-drawn size variants (near/mid/far) per Section 7
+- **MVP4:** the other 3 Tier 0 monster sprites (Dungeon Rats, Rusted Sentinel, Cave Bats) — Skeleton Warrior is drafted above, ready whenever
 - **MVP5:** hit-particle effects, HP bar frame
 - **MVP6:** rune icons
 - **MVP7+:** logo, lore-crawl illustration, win screen art
