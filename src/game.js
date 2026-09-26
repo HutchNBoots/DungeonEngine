@@ -127,10 +127,10 @@ function move(stepDirection) {
   const dir = DIRECTIONS[player.facing];
   const targetX = player.x + dir.dx * stepDirection;
   const targetY = player.y + dir.dy * stepDirection;
-  if (!isWall(targetX, targetY)) {
-    player.x = targetX;
-    player.y = targetY;
-  }
+  if (isWall(targetX, targetY)) return;
+  if (monsterAtCell(targetX, targetY)) return; // no combat yet, so a monster's tile is off-limits for now
+  player.x = targetX;
+  player.y = targetY;
 }
 
 
@@ -300,6 +300,57 @@ function unequipItem(hero, slotName) {
   hero.items[emptySlotIndex] = item;
   hero.equipment[slotName] = null;
   renderInventoryPanel();
+}
+
+
+// -------------------------------------------------------------------
+// 2c. MONSTERS -- MVP4: Monsters
+// -------------------------------------------------------------------
+// No combat yet -- that's MVP5. For now, monsters just exist, sit in
+// the dungeon, and (for the one type the spec calls out) wander a
+// little. `weakness` isn't used until combat needs it, but it's part
+// of every monster's identity per the bestiary, so it lives here now.
+//
+// Placeholder-first (01-requirements.md Section 7a): Dad hasn't drawn
+// the 4 Tier 0 sprites yet, so `shape` picks a CSS clip-path silhouette
+// (see the .monster-* classes in style.css) instead of a real image --
+// just enough to tell the four types apart at a glance.
+//
+// Movement rule (01-requirements.md Section 4b): Tier 0 monsters are
+// "mostly stationary or short-patrol" -- stationary is the simplest
+// version of that and is what these three use. Cave Bats are the one
+// named exception (erratic movement), handled separately below.
+const monsters = [
+  { x: 8, y: 1, name: "Dungeon Rats", weakness: "Strength", color: "#6b5642", shape: "rat" },
+  { x: 5, y: 3, name: "Rusted Sentinel", weakness: "Finesse", color: "#7a8088", shape: "sentinel" },
+  { x: 7, y: 7, name: "Skeleton Warrior", weakness: "Strength", color: "#cfc9b8", shape: "skeleton" },
+];
+
+// Cave Bats live separately from the stationary monsters above because
+// they move -- keeping a direct reference (rather than searching
+// `monsters` by name every tick) makes the wandering logic simpler.
+const caveBats = { x: 6, y: 4, name: "Cave Bats", weakness: "Intelligence", color: "#3a2a44", shape: "bat" };
+monsters.push(caveBats);
+
+// The little dead-end closet the bats are allowed to dart around in --
+// "erratic movement within their room" per the spec, not a free run of
+// the whole dungeon.
+const CAVE_BAT_ROOM = { x: 6, yMin: 3, yMax: 5 };
+
+function monsterAtCell(x, y) {
+  return monsters.find((monster) => monster.x === x && monster.y === y);
+}
+
+// Picks a random spot inside the bats' little closet and hops them
+// there, as long as it's not the tile the player is standing on --
+// otherwise a badly-timed hop could land a bat right on top of the
+// player, which would look like a bug rather than a bat.
+function wanderCaveBats() {
+  const y = CAVE_BAT_ROOM.yMin + Math.floor(Math.random() * (CAVE_BAT_ROOM.yMax - CAVE_BAT_ROOM.yMin + 1));
+  if (CAVE_BAT_ROOM.x === player.x && y === player.y) return;
+  caveBats.x = CAVE_BAT_ROOM.x;
+  caveBats.y = y;
+  renderCorridor();
 }
 
 
@@ -593,10 +644,12 @@ function renderCorridor() {
   const rightDir = DIRECTIONS[rightOfFacing(player.facing)];
 
   // Collected while walking the depths below, then drawn all at once
-  // after every wall/floor/ceiling piece -- so an item always appears
-  // in front of the corridor geometry at its own depth, regardless of
-  // which depth's surfaces happened to be added to the page first.
+  // after every wall/floor/ceiling piece -- so an item/monster always
+  // appears in front of the corridor geometry at its own depth,
+  // regardless of which depth's surfaces happened to be added to the
+  // page first.
   const itemsToRender = [];
+  const monstersToRender = [];
 
   for (let depth = 0; depth < RECT_SIZES.length - 1; depth++) {
     const near = getRect(depth);
@@ -610,6 +663,13 @@ function renderCorridor() {
     const mapItemHere = itemAtCell(cellX, cellY);
     if (mapItemHere) {
       itemsToRender.push({ mapItem: mapItemHere, depth, far });
+    }
+
+    // Monsters block movement (see move()), so the player can never
+    // actually be standing on one -- depth is always 1 or more here.
+    const monsterHere = monsterAtCell(cellX, cellY);
+    if (monsterHere) {
+      monstersToRender.push({ monster: monsterHere, depth, far });
     }
 
     // Ceiling and floor are always drawn -- every corridor tile has both.
@@ -697,12 +757,16 @@ function renderCorridor() {
     }
   }
 
-  // Draw farthest-first so a nearer item's sprite overlaps/covers a
+  // Draw farthest-first so a nearer item/monster overlaps/covers a
   // farther one if they ever lined up on screen, same as how the real
   // world would occlude them.
   for (let i = itemsToRender.length - 1; i >= 0; i--) {
     const { mapItem, depth, far } = itemsToRender[i];
     renderDepthItem(mapItem, depth, far, viewport);
+  }
+  for (let i = monstersToRender.length - 1; i >= 0; i--) {
+    const { monster, depth, far } = monstersToRender[i];
+    renderDepthMonster(monster, depth, far, viewport);
   }
 
   renderMinimap(); // keeps the player marker current if the panel's open
@@ -767,6 +831,30 @@ function renderDepthItem(mapItem, depth, far, viewport) {
     icon.addEventListener("click", () => handleMapIconClick(mapItem));
   }
   viewport.appendChild(icon);
+}
+
+const DEFAULT_MONSTER_SIZE = 130; // px, at depth 0 -- monsters read a bit bigger than a hand-sized item
+
+// Draws one monster at the given depth, using the same depth-scaling
+// and floor-anchoring math as renderDepthItem. Monsters are never
+// interactive yet -- there's no combat to start by clicking one -- so
+// unlike items there's no depth-0/interactive split here.
+function renderDepthMonster(monster, depth, far, viewport) {
+  const scale = Math.pow(ITEM_DEPTH_SHRINK, depth);
+  const size = DEFAULT_MONSTER_SIZE * scale;
+
+  const centerX = VIEWPORT_WIDTH / 2;
+  const bottomY = far.bottom;
+
+  const sprite = document.createElement("div");
+  sprite.className = "monster-icon monster-" + monster.shape;
+  sprite.style.left = toPercent(centerX - size / 2, VIEWPORT_WIDTH);
+  sprite.style.top = toPercent(bottomY - size, VIEWPORT_HEIGHT);
+  sprite.style.width = toPercent(size, VIEWPORT_WIDTH);
+  sprite.style.height = toPercent(size, VIEWPORT_HEIGHT);
+  sprite.style.backgroundColor = monster.color; // placeholder color -- see the shape's clip-path in style.css
+  sprite.title = monster.name;
+  viewport.appendChild(sprite);
 }
 
 // Draws the party panel: one clickable box per hero. Clicking a hero
@@ -964,4 +1052,5 @@ document.getElementById("start-button").addEventListener("click", () => {
   document.getElementById("game-screen").classList.remove("hidden");
   renderPartyPanel();
   renderCorridor(); // draw the very first frame once the game screen appears
+  setInterval(wanderCaveBats, 1200); // Cave Bats are the one Tier 0 monster that moves on its own
 });

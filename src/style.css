@@ -188,6 +188,40 @@ body {
   outline: 3px solid #e0a458;
 }
 
+/* ---------- Monsters (MVP4) ---------- */
+/* Position/size are set inline per piece (see renderDepthMonster in    */
+/* game.js), same depth-based approach as items. No real sprites exist  */
+/* yet (per the placeholder-first rule, 01-requirements.md Section 7a), */
+/* so each monster type gets its own clip-path silhouette instead of a  */
+/* plain square -- just enough to tell the four Tier 0 monsters apart   */
+/* at a glance until Dad's sprites are ready to swap in. Not clickable  */
+/* yet -- there's no combat to start until MVP5. */
+
+.monster-icon {
+  position: absolute;
+  z-index: 5;
+}
+
+.monster-rat {
+  /* low and wide -- reads as something small scurrying near the floor */
+  clip-path: polygon(0% 100%, 10% 50%, 50% 20%, 90% 50%, 100% 100%);
+}
+
+.monster-sentinel {
+  /* boxy/blocky -- reads as a stiff armored guardian */
+  clip-path: polygon(20% 0%, 80% 0%, 100% 20%, 100% 100%, 0% 100%, 0% 20%);
+}
+
+.monster-bat {
+  /* wide diamond with a notch at the bottom -- reads as wings */
+  clip-path: polygon(50% 0%, 100% 40%, 80% 100%, 50% 70%, 20% 100%, 0% 40%);
+}
+
+.monster-skeleton {
+  /* tall and narrow -- reads as a standing humanoid figure */
+  clip-path: polygon(35% 0%, 65% 0%, 100% 30%, 80% 100%, 20% 100%, 0% 30%);
+}
+
 /* ---------- Inventory panel (MVP2) ---------- */
 
 #panel-buttons {
