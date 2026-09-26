@@ -7,6 +7,8 @@
 > **Dad:** worth a quick sanity check on the style/resolution choices below before generating for real — these are reasonable defaults, not locked decisions.
 >
 > **How these get used in code (no effect on the prompts below):** for the wall texture, we learned the hard way that just cropping a flat tile into a tapered shape (CSS `clip-path`) isn't enough — the brick pattern itself needs to visibly shrink toward the vanishing point, or it reads as flat and unconvincing. The fix (`tools/generate_wall_side_assets.py`) pre-warps the flat texture into each depth band's exact trapezoid shape using a Pillow perspective transform, once, offline — see `docs/06-corridor-view-assets.md`. Floor and ceiling will get the same treatment once real textures exist for them: a similar script warping `floor.png`/`ceiling.png` into their own depth-band trapezoids, not just a flat repeating tile. The prompts below don't need to change for this — it's still just a plain seamless square texture, the warping happens after.
+>
+> **Every prompt below states its own exact pixel size AND repeats the retro-pixel-art requirement directly in its own body** — not just in the shared style guide. That's on purpose: a generation that only got the specific prompt (style guide forgotten, or trimmed by the tool) should still come back at the right size and in the right style, not silently drift to some default resolution or a smooth/photorealistic look. Pasting the shared style guide too still helps — it's more detail on palette and mood — but it's no longer the only thing enforcing size and retro-ness.
 
 ---
 
@@ -60,8 +62,12 @@ A seamless, tileable stone brick wall texture for a first-person
 dungeon corridor. Rough-cut grey stone blocks with visible mortar
 lines. Some blocks slightly darker/lighter for texture variation, but
 nothing that breaks the tiling seam. No torches, doors, or other
-objects in this image — just the wall material itself. 256x256 pixels,
-seamless tile.
+objects in this image — just the wall material itself.
+
+EXACT SIZE: 256x256 pixels, seamless tile. RETRO PIXEL ART ONLY —
+flat solid color fills, hard black outlines, chunky and blocky like a
+16-bit SNES-era game tile. NOT photorealistic, NOT a photo texture,
+NOT smooth or softly shaded.
 ```
 
 ### 2. Floor texture
@@ -77,7 +83,12 @@ A seamless, tileable dungeon floor texture, viewed from a low
 first-person angle. Worn grey flagstones with subtle cracks and dirt,
 matching the wall texture's stone color and lighting. No objects,
 debris, or characters in this image — just the floor material itself.
-256x256 pixels, seamless tile.
+
+EXACT SIZE: 256x256 pixels, seamless tile. RETRO PIXEL ART ONLY —
+flat solid color fills, hard black outlines, chunky and blocky like a
+16-bit SNES-era game tile. NOT photorealistic, NOT a photo texture,
+NOT smooth or softly shaded. (A prior attempt at this exact asset came
+back as a realistic stone photo — that is the mistake to avoid.)
 ```
 
 ### 3. Ceiling texture
@@ -92,7 +103,12 @@ debris, or characters in this image — just the floor material itself.
 A seamless, tileable dungeon ceiling texture. Dark rough stone,
 slightly darker overall than the wall texture since it gets less
 torchlight. No objects (no beams, chains, or fixtures) in this image —
-just the ceiling material itself. 256x256 pixels, seamless tile.
+just the ceiling material itself.
+
+EXACT SIZE: 256x256 pixels, seamless tile. RETRO PIXEL ART ONLY —
+flat solid color fills, hard black outlines, chunky and blocky like a
+16-bit SNES-era game tile. NOT photorealistic, NOT a photo texture,
+NOT smooth or softly shaded.
 ```
 
 ### 4. Torch sprite
@@ -106,7 +122,12 @@ just the ceiling material itself. 256x256 pixels, seamless tile.
 A single wall-mounted torch with a bright orange/yellow flame, iron
 wall bracket, on a FULLY TRANSPARENT background — no wall, no stone,
 nothing behind the torch itself. Facing forward, centered in frame.
-64x128 pixels (tall and narrow). PNG with alpha transparency.
+
+EXACT SIZE: 64x128 pixels (tall and narrow). PNG with alpha
+transparency. RETRO PIXEL ART ONLY — flat solid color fills, hard
+black outlines, chunky and blocky like a 16-bit SNES-era game sprite.
+NOT photorealistic, NOT smooth or softly shaded, NOT a rendered 3D
+flame effect.
 ```
 
 ---
@@ -136,16 +157,21 @@ Full body visible, facing forward/slightly angled toward the
 viewer, as if seen down a dungeon corridor. FULLY TRANSPARENT
 background -- no floor, no wall, nothing behind the figure itself.
 
-[near variant] 256x384 pixels, tall aspect ratio, full detail
-(individual rib/bone shading, gear texture clearly visible).
+RETRO PIXEL ART ONLY, every variant -- flat solid color fills, hard
+black outlines, chunky and blocky like a 16-bit SNES-era game sprite.
+NOT photorealistic, NOT smooth or softly shaded, NOT a rendered 3D
+model.
 
-[mid variant] 160x240 pixels, same pose, simplified slightly for
-the smaller size -- keep the silhouette instantly readable as the
-same character, drop only the finest detail.
+[near variant] EXACT SIZE 256x384 pixels, tall aspect ratio, full
+detail (individual rib/bone shading, gear texture clearly visible).
 
-[far variant] 96x144 pixels, same pose again, reduced to bold
-shapes and its most essential silhouette -- readable as a skeleton
-warrior even as a small, distant shape.
+[mid variant] EXACT SIZE 160x240 pixels, same pose, simplified
+slightly for the smaller size -- keep the silhouette instantly
+readable as the same character, drop only the finest detail.
+
+[far variant] EXACT SIZE 96x144 pixels, same pose again, reduced to
+bold shapes and its most essential silhouette -- readable as a
+skeleton warrior even as a small, distant shape.
 ```
 
 ---
@@ -173,8 +199,12 @@ scene.
 
 Full figure visible at a slight angle, as if just discovered lying in
 a dungeon corridor. FULLY TRANSPARENT background -- no floor, no
-wall, nothing behind the figure and torch themselves. 400x300 pixels,
-landscape orientation.
+wall, nothing behind the figure and torch themselves.
+
+EXACT SIZE: 400x300 pixels, landscape orientation. RETRO PIXEL ART
+ONLY -- flat solid color fills, hard black outlines, chunky and
+blocky like a 16-bit SNES-era game sprite. NOT photorealistic, NOT
+smooth or softly shaded, NOT a rendered 3D model.
 ```
 
 ---
