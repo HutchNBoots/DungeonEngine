@@ -159,20 +159,17 @@ body {
   font-size: 11px;
 }
 
-/* ---------- Item/lore-object icons on the floor (MVP2) ---------- */
-/* Placeholder colored squares -- real icons come later, per the      */
+/* ---------- Item/lore-object icons in the corridor (MVP2/MVP3) ---------- */
+/* Position, size, and left-offset are all set inline per piece (see    */
+/* renderDepthItem in game.js) since they depend on how far away the    */
+/* item is -- same depth-based approach as the wall/floor pieces.       */
+/* Placeholder colors for items without real art yet, per the           */
 /* placeholder-first rule (01-requirements.md Section 7a). */
 
 .map-icon {
   position: absolute;
-  left: 50%;
-  bottom: 12%;
-  transform: translateX(-50%);
-  width: 46px;
-  height: 46px;
   border: 2px solid #111;
   border-radius: 3px;
-  cursor: pointer;
   z-index: 5;
   background-size: contain;
   background-position: center;
@@ -180,7 +177,14 @@ body {
   image-rendering: pixelated;
 }
 
-.map-icon:hover {
+/* Only the item on the player's own tile (depth 0) can actually be
+   picked up/read -- farther ones are visible so the item doesn't just
+   pop into existence, but aren't clickable until you walk up to them. */
+.map-icon.interactive {
+  cursor: pointer;
+}
+
+.map-icon.interactive:hover {
   outline: 3px solid #e0a458;
 }
 

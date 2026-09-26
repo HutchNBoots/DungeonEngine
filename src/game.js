@@ -228,10 +228,8 @@ const mapItems = [
 
 // Finds a not-yet-picked-up item/lore-object sitting on the player's
 // own tile, if any -- this test map only ever puts one per tile.
-function itemAtPlayerPosition() {
-  return mapItems.find(
-    (mapItem) => !mapItem.pickedUp && mapItem.x === player.x && mapItem.y === player.y
-  );
+function itemAtCell(x, y) {
+  return mapItems.find((mapItem) => !mapItem.pickedUp && mapItem.x === x && mapItem.y === y);
 }
 
 // What happens when the player clicks an item/lore-object icon.
@@ -594,6 +592,12 @@ function renderCorridor() {
   const leftDir = DIRECTIONS[leftOfFacing(player.facing)];
   const rightDir = DIRECTIONS[rightOfFacing(player.facing)];
 
+  // Collected while walking the depths below, then drawn all at once
+  // after every wall/floor/ceiling piece -- so an item always appears
+  // in front of the corridor geometry at its own depth, regardless of
+  // which depth's surfaces happened to be added to the page first.
+  const itemsToRender = [];
+
   for (let depth = 0; depth < RECT_SIZES.length - 1; depth++) {
     const near = getRect(depth);
     const far = getRect(depth + 1);
@@ -602,6 +606,11 @@ function renderCorridor() {
     // steps forward from where they are now.
     const cellX = player.x + facingDir.dx * depth;
     const cellY = player.y + facingDir.dy * depth;
+
+    const mapItemHere = itemAtCell(cellX, cellY);
+    if (mapItemHere) {
+      itemsToRender.push({ mapItem: mapItemHere, depth, far });
+    }
 
     // Ceiling and floor are always drawn -- every corridor tile has both.
     // Each is a trapezoid spanning the full width at "near" (wide) down
@@ -688,7 +697,14 @@ function renderCorridor() {
     }
   }
 
-  renderMapIcon();
+  // Draw farthest-first so a nearer item's sprite overlaps/covers a
+  // farther one if they ever lined up on screen, same as how the real
+  // world would occlude them.
+  for (let i = itemsToRender.length - 1; i >= 0; i--) {
+    const { mapItem, depth, far } = itemsToRender[i];
+    renderDepthItem(mapItem, depth, far, viewport);
+  }
+
   renderMinimap(); // keeps the player marker current if the panel's open
   updateDebugLine();
 }
@@ -703,13 +719,41 @@ function updateDebugLine() {
 // Shows a clickable icon for whatever item/lore-object is on the
 // player's own tile, if any. Just a colored square for now, per the
 // placeholder-first rule -- real icons come once art exists for them.
-function renderMapIcon() {
-  const mapItem = itemAtPlayerPosition();
-  if (!mapItem) return;
+// How much smaller an item/lore-object sprite gets each step further
+// away -- the same idea as the wall/floor depth shading, just applied
+// to a sprite's size instead of a texture's color. This is the
+// "code-scaling" fallback 01-requirements.md Section 7b allows when a
+// sprite doesn't have hand-drawn near/mid/far variants yet (which is
+// every item sprite so far) -- once real size variants exist for
+// something, picking the right variant is the better approach, not
+// scaling one image up or down.
+const ITEM_DEPTH_SHRINK = 0.72;
+const DEFAULT_ITEM_SIZE = 110; // px, at depth 0, for items without their own iconWidth/iconHeight
 
-  const viewport = document.getElementById("viewport");
+// Draws one item/lore-object sprite at the given depth, sized and
+// positioned to match that depth's frame -- so it's visible receding
+// down the corridor and grows as the player gets closer, the same way
+// everything else in the view does, instead of only appearing once
+// the player is standing right on top of it.
+function renderDepthItem(mapItem, depth, far, viewport) {
+  const scale = Math.pow(ITEM_DEPTH_SHRINK, depth);
+  const width = (mapItem.iconWidth || DEFAULT_ITEM_SIZE) * scale;
+  const height = (mapItem.iconHeight || DEFAULT_ITEM_SIZE) * scale;
+
+  // Anchored so its bottom edge sits on the floor at the far edge of
+  // this depth's band, and centered left-right since it's directly
+  // ahead of the player (that's the only case we render at all).
+  const centerX = VIEWPORT_WIDTH / 2;
+  const bottomY = far.bottom;
+
   const icon = document.createElement("div");
-  icon.className = "map-icon";
+  const isInteractive = depth === 0; // only the tile you're standing on can be picked up/read
+  icon.className = "map-icon" + (isInteractive ? " interactive" : "");
+  icon.style.left = toPercent(centerX - width / 2, VIEWPORT_WIDTH);
+  icon.style.top = toPercent(bottomY - height, VIEWPORT_HEIGHT);
+  icon.style.width = toPercent(width, VIEWPORT_WIDTH);
+  icon.style.height = toPercent(height, VIEWPORT_HEIGHT);
+
   if (mapItem.icon) {
     // Real art: no fallback color underneath, or it would show through
     // the image's transparent areas as a solid-colored box instead of
@@ -718,13 +762,10 @@ function renderMapIcon() {
   } else {
     icon.style.backgroundColor = mapItem.color; // still-placeholder items only
   }
-  // Most pickups are small (a sword, a potion) and fine at the default
-  // size -- a bigger story moment like a fallen body needs to actually
-  // read as one, so it can ask for its own box size.
-  if (mapItem.iconWidth) icon.style.width = mapItem.iconWidth + "px";
-  if (mapItem.iconHeight) icon.style.height = mapItem.iconHeight + "px";
   icon.title = mapItem.name;
-  icon.addEventListener("click", () => handleMapIconClick(mapItem));
+  if (isInteractive) {
+    icon.addEventListener("click", () => handleMapIconClick(mapItem));
+  }
   viewport.appendChild(icon);
 }
 
