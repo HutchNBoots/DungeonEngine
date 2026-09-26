@@ -174,6 +174,7 @@ const mapItems = [
     type: "lore",
     name: "Fallen Adventurer",
     color: "#55555f",
+    icon: "../assets/sprites/fallen_adventurer.png",
     loreText: "A traveler's pack lies beside a torch, snapped and dark. Whoever this was, they never made it out -- and not long ago, either.",
     pickedUp: false,
   },
