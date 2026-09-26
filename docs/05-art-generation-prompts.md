@@ -150,6 +150,35 @@ warrior even as a small, distant shape.
 
 ---
 
+## MVP2/7+ prep — Fallen Adventurer (drafted early)
+
+The "one fallen rival-party member per chapter" lore beat (`02-lore.md`) — currently in the game as a test lore object (`Fallen Adventurer` in `game.js`) using a flat placeholder color. **Important distinction from the skeleton above:** this is a much more recent death than the ancient, already-skeletal Tier 0 guardians — the rival party only went in before the player, not centuries ago. So this should read as a fallen *person*, not bones. (The placeholder lore text in `game.js` originally said "a set of old bones," which contradicted this — fixed to match.)
+
+This doubles as two possible uses: the small pickup-style icon it uses today, and/or the bigger pixel-art illustration the UX doc (`03-cx-ux.md` Section 4b) calls for when a real lore-reveal scroll opens ("includes pixel art -- an illustration relevant to what's being revealed"). One landscape-ish image works for both; crop it down for the small icon, use it full-size for the big reveal.
+
+- **File:** `assets/sprites/fallen_adventurer.png`
+- **Size:** 400×300 px, PNG, **transparent background required**
+
+```
+[paste style guide above]
+
+A fallen adventurer lies collapsed on the dungeon floor -- clearly a
+person, NOT a bare skeleton or bones. This death is recent, not the
+ancient, already-skeletal remains of the ordinary dungeon guardians
+found elsewhere. Dressed in worn traveling/adventuring gear: leather
+armor, a torn cloak, a pack. Beside them, a torch that's snapped or
+gone dark -- broken, no flame. Somber and tragic in tone, not gory or
+graphic -- this is a story beat about loss and dread, not a horror
+scene.
+
+Full figure visible at a slight angle, as if just discovered lying in
+a dungeon corridor. FULLY TRANSPARENT background -- no floor, no
+wall, nothing behind the figure and torch themselves. 400x300 pixels,
+landscape orientation.
+```
+
+---
+
 ## Later MVPs — add sections here when needed
 
 Don't generate these yet — placeholder shapes are correct until each MVP actually starts (per `01-requirements.md` Section 7a):

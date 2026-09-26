@@ -174,7 +174,7 @@ const mapItems = [
     type: "lore",
     name: "Fallen Adventurer",
     color: "#55555f",
-    loreText: "A broken torch lies beside a set of old bones. Whoever this was, they never made it out.",
+    loreText: "A traveler's pack lies beside a torch, snapped and dark. Whoever this was, they never made it out -- and not long ago, either.",
     pickedUp: false,
   },
   { x: 2, y: 1, type: "item", slot: "general", name: "Blue Gem", color: "#3a6ea8", pickedUp: false },
