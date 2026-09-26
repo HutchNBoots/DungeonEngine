@@ -175,6 +175,8 @@ const mapItems = [
     name: "Fallen Adventurer",
     color: "#55555f",
     icon: "../assets/sprites/fallen_adventurer.png",
+    iconWidth: 200, // wider box than a regular item -- matches the sprite's
+    iconHeight: 152, // own ~4:3 aspect ratio and reads as a real scene, not an icon
     loreText: "A traveler's pack lies beside a torch, snapped and dark. Whoever this was, they never made it out -- and not long ago, either.",
     pickedUp: false,
   },
@@ -708,10 +710,19 @@ function renderMapIcon() {
   const viewport = document.getElementById("viewport");
   const icon = document.createElement("div");
   icon.className = "map-icon";
-  icon.style.backgroundColor = mapItem.color; // fallback if there's no real icon (or it fails to load)
   if (mapItem.icon) {
+    // Real art: no fallback color underneath, or it would show through
+    // the image's transparent areas as a solid-colored box instead of
+    // letting the actual corridor behind it show through.
     icon.style.backgroundImage = "url('" + mapItem.icon + "')";
+  } else {
+    icon.style.backgroundColor = mapItem.color; // still-placeholder items only
   }
+  // Most pickups are small (a sword, a potion) and fine at the default
+  // size -- a bigger story moment like a fallen body needs to actually
+  // read as one, so it can ask for its own box size.
+  if (mapItem.iconWidth) icon.style.width = mapItem.iconWidth + "px";
+  if (mapItem.iconHeight) icon.style.height = mapItem.iconHeight + "px";
   icon.title = mapItem.name;
   icon.addEventListener("click", () => handleMapIconClick(mapItem));
   viewport.appendChild(icon);
